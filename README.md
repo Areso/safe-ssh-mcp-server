@@ -30,6 +30,9 @@ The core philosophy behind this MCP server is safety first. Instead of providing
 3. check_tools.py - check the server's tools with schemas, and list them
 4. check_health.py - check the server's tools and either it's up
 
+## The MCP Registry
+mcp-name: io.github.Areso/safe-ssh-mcp
+
 ## The License
 This project is licensed under the GNU AGPLv3 License.
 
