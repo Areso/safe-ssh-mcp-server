@@ -6,9 +6,7 @@
       "type": "stdio",
       "command": "/full_path/safe-ssh-mcp/.venv/bin/python3.11",
       "args": [
-        "/full_path/safe-ssh-mcp/mcp_ssh.py",
-        "--transport",
-        "stdio"
+        "/full_path/safe-ssh-mcp/mcp_ssh.py"
       ]
     }
   }

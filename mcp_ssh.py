@@ -24,11 +24,12 @@ def load_config():
     config = configparser.ConfigParser()
     # Default values
     settings = {
-        "transport": "streamable-http",
+        "transport": "http",  # streamable-http, http, sse
         "host": "127.0.0.1",
         "port": "8000"
     }
-    config_file_name = "mcp_config.ini"
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_file_name = os.path.join(script_dir, "mcp_config.ini")
     if os.path.exists(config_file_name):
         config.read(config_file_name)
         if "server" in config:
@@ -427,7 +428,7 @@ def main():
     cfg = load_config()
 
     # 3. CLI arguments take priority over config file
-    transport_type = args.transport or cfg.get("transport", "sse")
+    transport_type = args.transport or cfg.get("transport", "stdio")
     host = args.host or cfg.get("host", "127.0.0.1")
     port = args.port or int(cfg.get("port", 4747))
 
