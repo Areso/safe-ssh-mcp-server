@@ -11,6 +11,8 @@ import threading
 import time
 import argparse
 import sys
+import re
+import shlex
 
 import paramiko
 #from mcp.server.fastmcp import FastMCP
@@ -18,7 +20,6 @@ from fastmcp import FastMCP
 
 # Initialize MCP Server
 mcp = FastMCP("SRE Collector")
-
 
 def load_config():
     config = configparser.ConfigParser()
@@ -247,7 +248,7 @@ def get_disk_free(
 def get_disk_usage(
     host: str,
     user: str,
-    path: str = "/",
+    abs_path: str = "/",
     port: int = 22,
     password: Optional[str] = None,
     key_path: Optional[str] = None,
@@ -255,10 +256,22 @@ def get_disk_usage(
     accept_new_hostkey: bool = False,
 ) -> Dict[str, Any]:
     """
-    Collects disk usage for a specific path from a remote Linux host via SSH.
+    Collects disk usage for a specific abs path from a remote Linux host via SSH.
     Returns the top 20 largest files/folders in the specified directory.
     """
-    cmd = f"du -sh {path}/* 2>/dev/null | sort -rh | head -n 20"
+    if not isinstance(path, str):
+        return {"ok": False, "error": "Path must be a string"}
+
+    path = os.path.normpath(path)
+    if not os.path.isabs(path):
+        return {"ok": False, "error": "Path must be absolute"}
+
+    FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
+    if re.search(FORBIDDEN_CHARS, path):
+        return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
+
+    quoted_path = shlex.quote(path)
+    cmd = f"find {quoted_path} -mindepth 1 -maxdepth 1 -exec du -sh -- {{}} + 2>/dev/null | sort -rh | head -n 20"
     result = run_ssh_command(
         host, user, cmd, port, password, key_path, timeout, accept_new_hostkey, 
         success_exit_codes=(0, 1) # du may return 1 on partial permission denied

@@ -3,6 +3,7 @@ A secure and scoped Model Context Protocol (MCP) server for executing safe, read
 
 ## Badges
 [![Snyk Vulnerability Database report](https://snyk.io/advisor/images/snyk-poweredby.svg)](https://security.snyk.io/package/pip/safe-ssh-mcp) - security check  
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/safe-ssh-mcp?period=total&units=ABBREVIATION&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/safe-ssh-mcp)  
 
 ## Overview
 
