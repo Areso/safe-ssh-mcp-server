@@ -259,25 +259,25 @@ def get_disk_usage(
     Collects disk usage for a specific abs path from a remote Linux host via SSH.
     Returns the top 20 largest files/folders in the specified directory.
     """
-    if not isinstance(path, str):
+    if not isinstance(abs_path, str):
         return {"ok": False, "error": "Path must be a string"}
 
-    path = os.path.normpath(path)
-    if not os.path.isabs(path):
+    abs_path = os.path.normpath(abs_path)
+    if not os.path.isabs(abs_path):
         return {"ok": False, "error": "Path must be absolute"}
 
     FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
-    if re.search(FORBIDDEN_CHARS, path):
+    if re.search(FORBIDDEN_CHARS, abs_path):
         return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
 
-    quoted_path = shlex.quote(path)
+    quoted_path = shlex.quote(abs_path)
     cmd = f"find {quoted_path} -mindepth 1 -maxdepth 1 -exec du -sh -- {{}} + 2>/dev/null | sort -rh | head -n 20"
     result = run_ssh_command(
         host, user, cmd, port, password, key_path, timeout, accept_new_hostkey, 
         success_exit_codes=(0, 1) # du may return 1 on partial permission denied
     )
     if result["ok"]:
-        result["path"] = path
+        result["path"] = abs_path
     return result
 
 @mcp.tool()
