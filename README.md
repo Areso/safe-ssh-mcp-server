@@ -1,5 +1,6 @@
 # Safe SSH MCP Server
-A secure and scoped Model Context Protocol (MCP) server for executing safe, read-only diagnostic commands over SSH.
+A secure and scoped SSH MCP server for executing read-only diagnostic commands over SSH.
+In this project, "safe" refers specifically to host safety: the server is designed to prevent modifications to the remote system and reduce the risk of operational harm. It does NOT attempt to guarantee that command output cannot be misused by external agents.
 
 ## Badges
 [![Snyk Vulnerability Database report](https://snyk.io/advisor/images/snyk-poweredby.svg)](https://security.snyk.io/package/pip/safe-ssh-mcp) - security check  
@@ -17,22 +18,23 @@ The core philosophy behind this MCP server is safety first. Instead of providing
 5. get_current_datetime : `date`
 6. get_distroname_version : `cat /etc/os-release`
 7. get_systemd_list_all : `systemctl list-units --all --no-pager`
-8. get_systemd_list_faild : `systemctl list-units --state=failed --no-pager`
+8. get_systemd_list_failed : `systemctl list-units --state=failed --no-pager`
 9. get_systemd_list_timers : `systemctl list-timers --no-pager`
-10. get_systemd_status : `systemctl status {daemon}`
-11. get_top : `top -b -n 1 -c`
+10. get_crontab_tasks: `crontab -l`
+11. get_systemd_status : `systemctl status {daemon}`
+12. get_top : `top -b -n 1 -c`
 
 ## Example of invocation
 `okay, could u check disk usage on /root/ path with help of safe-ssh-mcp server on a remote myserver.mydomain.pro using root and /Users/myUser/.ssh/id_rsa to login?`
 
 ## Project Contents
 1. mcp_ssh.py - the SSH MCP server
-2. mcp_config.ini - the server's config:
-    * ip address to listen (default 127.0.0 - available only from the localhost)
-    * port (4747 for default)
-    * transport (sse)
+2. mcp_config.ini - the server's config
 3. check_tools.py - check the server's tools with schemas, and list them
 4. check_health.py - check the server's tools and either it's up
+
+## Compatibility
+Tested only on Python3.11 running on MacOS
 
 ## The MCP Registry
 mcp-name: io.github.Areso/safe-ssh-mcp
@@ -41,7 +43,7 @@ mcp-name: io.github.Areso/safe-ssh-mcp
 This project is licensed under the GNU AGPLv3 License.
 
 ### Why AGPL?
-This server acts as core infrastructure and contains no proprietary business logic. By using the AGPL license, we ensure that any security improvements, bug fixes, or new diagnostic tools added to the server are shared back with the open-source community.
+This server acts as core infrastructure and contains no business logic. By using the AGPL license, we ensure that any security improvements, bug fixes, or new diagnostic tools added to the server are shared back with the open-source community.
 
 ### Note for Client Developers 
 Because MCP clients communicate with this server via standard Inter-Process Communication (IPC) or network protocols (like HTTP/SSE), the AGPL license does not "infect" or restrict the client applications connecting to it.   

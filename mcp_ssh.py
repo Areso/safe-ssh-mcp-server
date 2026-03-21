@@ -431,6 +431,53 @@ def get_top(
     cmd = "top -b -n 1 -c"
     return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
 
+@mcp.tool()
+def get_lsblk(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects lsblk output from a remote Linux host via SSH
+    """
+    cmd = "lsblk"
+    return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
+
+@mcp.tool()
+def get_crontab_tasks(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects crontab -l (crontab list) output from a remote Linux host via SSH
+    """
+    cmd = "crontab -l"
+    return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
+
+@mcp.tool()
+def get_listening_sockets(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects ss -tulpn output (open ports and sockets) from a remote Linux host via SSH
+    """
+    cmd = "ss -tulpn"
+    return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
 ## == END OF TOOLS == ##
 
 def main():
