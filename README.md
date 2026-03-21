@@ -1,5 +1,5 @@
 # Safe SSH MCP Server
-A secure and scoped SSH MCP server for executing read-only diagnostic commands over SSH.
+A secure and scoped SSH MCP server for executing read-only diagnostic commands over SSH.  
 In this project, "safe" refers specifically to host safety: the server is designed to prevent modifications to the remote system and reduce the risk of operational harm. It does NOT attempt to guarantee that command output cannot be misused by external agents.
 
 ## Badges
