@@ -528,6 +528,22 @@ def get_lsblk(
     return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
 
 @mcp.tool()
+def get_docker_ps_all(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects docker ps --all output from a remote Linux host via SSH
+    """
+    cmd = "docker ps --all"
+    return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
+
+@mcp.tool()
 def get_crontab_tasks(
     host: str,
     user: str,
