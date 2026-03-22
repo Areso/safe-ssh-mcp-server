@@ -245,6 +245,21 @@ def get_disk_free(
     return run_ssh_command(host, user, "df -h", port, password, key_path, timeout, accept_new_hostkey)
 
 @mcp.tool()
+def get_inode_usage(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 10,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects inode usage (df -i) from a remote Linux host via SSH.
+    """
+    return run_ssh_command(host, user, "df -i", port, password, key_path, timeout, accept_new_hostkey)
+
+@mcp.tool()
 def get_disk_usage(
     host: str,
     user: str,
