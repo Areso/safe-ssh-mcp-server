@@ -478,6 +478,35 @@ def get_listening_sockets(
     """
     cmd = "ss -tulpn"
     return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
+
+@mcp.tool()
+def get_service_logs_from_journalctl(
+    service: str,
+    host: str,
+    user: str,
+    lines: int = 200,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Gets recent journald logs for a specific systemd service.
+    """
+    VALID_SERVICE_PATTERN = re.compile(r"^[a-zA-Z0-9.\-_@:]+$")
+    if not VALID_SERVICE_PATTERN.match(service):
+        return {"ok": False, "error": "Invalid service name: '{service}'. Only ASCII alphanumeric "
+            "characters, '.', '-', '_', '@', and ':' are allowed."}
+
+    # Explicitly exclude booleans (Best practice for duck typing)
+    if not isinstance(lines, int) or isinstance(lines, bool) or not (1 <= lines <= 1000):
+        return {"ok": False, "error": "Invalid value of lines, should be Integer from 1 to 1000"}
+    
+    lines = max(1, min(lines, 1000))
+    safe_service = shlex.quote(service)
+    cmd = f"journalctl -xeu {safe_service} -n {lines} --no-pager"
+    return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
 ## == END OF TOOLS == ##
 
 def main():
