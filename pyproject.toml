@@ -11,7 +11,7 @@ authors = [
 ]
 license = "AGPL-3.0-or-later"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<4.0"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: POSIX :: Linux",
@@ -35,6 +35,9 @@ safe-ssh-mcp = "mcp_ssh:main"
 
 [tool.setuptools]
 py-modules = ["mcp_ssh"]
+
+[tool.poetry]
+packages = [{include = "mcp_ssh.py"}]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
