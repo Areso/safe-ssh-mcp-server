@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, ContextManager
 from contextlib import contextmanager
+import signal
 import threading
 import time
 import argparse
@@ -42,10 +43,15 @@ SSH_POOL: Dict[str, Dict[str, Any]] = {}
 pool_lock = threading.Lock()
 IDLE_TIMEOUT_SECONDS = 300
 
+shutdown_event = threading.Event()
+
 def _cleanup_idle_connections():
     """Background janitor thread to close stale SSH connections."""
-    while True:
-        time.sleep(60) # Wake up and check every 60 seconds
+    while not shutdown_event.is_set():
+        shutdown_event.wait(60) # Wake up and check every 60 seconds
+        if shutdown_event.is_set():
+            break
+        
         current_time = time.time()
         
         with pool_lock:
@@ -66,6 +72,21 @@ def _cleanup_idle_connections():
 
 janitor_thread = threading.Thread(target=_cleanup_idle_connections, daemon=True)
 janitor_thread.start()
+
+def shutdown_gracefully(signum, frame):
+    print("\n[Shutdown] Received shutdown signal, cleaning up...")
+    shutdown_event.set()
+    janitor_thread.join(timeout=5)
+    for pool_key, data in SSH_POOL.items():
+        try:
+            data["client"].close()
+        except Exception:
+            pass
+    SSH_POOL.clear()
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, shutdown_gracefully)
+signal.signal(signal.SIGINT, shutdown_gracefully)
 
 
 @contextmanager
@@ -129,7 +150,9 @@ def get_ssh_client(
                     pool_data["last_used"] = time.time()
                     return client
                 except EOFError:
-                    pass 
+                    pass
+                except Exception:
+                    pass
             
             # If dead, clean it up before creating a new one
             client.close()
@@ -162,8 +185,10 @@ def get_ssh_client(
         }
         return client
 
-def _run_cmd(client: paramiko.SSHClient, cmd: str, timeout: int = 20) -> Dict[str, Any]:
-    stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
+def _run_cmd(client: paramiko.SSHClient, cmd: str, timeout_s: int = 20) -> Dict[str, Any]:
+    channel_timeout_s = 5 
+    timeout_cmd = f"timeout {timeout_s}s bash -c {shlex.quote(cmd)}"
+    stdin, stdout, stderr = client.exec_command(timeout_cmd, timeout=timeout_s+channel_timeout_s)
     return {
         "command": cmd,
         "exit_code": stdout.channel.recv_exit_status(),
@@ -180,7 +205,7 @@ def run_ssh_command(
     port: int = 22,
     password: Optional[str] = None,
     key_path: Optional[str] = None,
-    timeout: int = 20,
+    timeout_s: int = 20,
     accept_new_hostkey: bool = False,
     success_exit_codes: tuple = (0,)
 ) -> Dict[str, Any]:
@@ -198,9 +223,9 @@ def run_ssh_command(
 
     try:
         client = get_ssh_client(
-            host, user, port, password, key_path, timeout, accept_new_hostkey
+            host, user, port, password, key_path, timeout_s, accept_new_hostkey
         )
-        result = _run_cmd(client, cmd_str, timeout=timeout)
+        result = _run_cmd(client, cmd_str, timeout_s=timeout_s)
         return {
             "ok": result["exit_code"] in success_exit_codes,
             "host": host,
@@ -277,9 +302,10 @@ def get_disk_usage(
     if not isinstance(abs_path, str):
         return {"ok": False, "error": "Path must be a string"}
 
-    abs_path = os.path.normpath(abs_path)
-    if not os.path.isabs(abs_path):
-        return {"ok": False, "error": "Path must be absolute"}
+    if os.name != 'nt':  # Skip local path validation on Windows (wrong for remote Linux)
+        abs_path = os.path.normpath(abs_path)
+        if not os.path.isabs(abs_path):
+            return {"ok": False, "error": "Path must be absolute"}
 
     FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
     if re.search(FORBIDDEN_CHARS, abs_path):
@@ -426,7 +452,6 @@ def get_systemd_status(
     cmd = f"systemctl status {safe_daemon}"
     return run_ssh_command(host, user, cmd, port, password, key_path, timeout, accept_new_hostkey)
 
-import json
 @mcp.tool()
 def get_ps_aux_top_cpu_consumers(
     host: str,
