@@ -121,10 +121,8 @@ class TestSystemdStatusValidation:
         mock_run_ssh_command.assert_not_called()
 
     def test_fstring_bug_error_contains_literal_daemon(self, mock_run_ssh_command):
-        """Document the f-string bug: error returns literal '{daemon}' not the value."""
         result = mcp_ssh.get_systemd_status(daemon="bad input!", host="h", user="u")
         assert result["ok"] is False
-        # BUG: the error message uses a non-f-string, so it contains the literal '{daemon}'
         assert "bad input!" in result["error"]
 
 
@@ -158,10 +156,9 @@ class TestJournalctlValidation:
         mock_run_ssh_command.assert_not_called()
 
     def test_fstring_bug_error_contains_literal_service(self, mock_run_ssh_command):
-        """Document the f-string bug: error returns literal '{service}' not the value."""
-        result = mcp_ssh.get_service_logs_from_journalctl(service="bad!", host="h", user="u")
+        result = mcp_ssh.get_service_logs_from_journalctl(service="bad input!", host="h", user="u")
         assert result["ok"] is False
-        assert "'{service}'" in result["error"]
+        assert "bad input!" in result["error"]
 
     # -- lines parameter --
 
