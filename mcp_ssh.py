@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import socket
 import configparser
 import os
@@ -132,7 +133,9 @@ def get_ssh_client(
     accept_new_hostkey: bool = False,
 ) -> paramiko.SSHClient:
     """Retrieves an active SSH client from the pool or creates a new one."""
-    pool_key = f"{user}@{host}:{port}"
+    conn_str = f"{host}:{port}:{user}:{password}:{key_path}:{timeout}:{accept_new_hostkey}"
+    conn_hash = hashlib.sha256(conn_str.encode()).hexdigest()[:16]
+    pool_key = f"{conn_hash}:{user}@{host}:{port}"
     
     with pool_lock:
         # 1. Check if we already have a connection
