@@ -30,11 +30,12 @@ The core philosophy behind this MCP server is safety first. Instead of providing
 ## Project Contents
 1. mcp_ssh.py - the SSH MCP server
 2. mcp_config.ini - the server's config
-3. check_tools.py - check the server's tools with schemas, and list them
-4. check_health.py - check the server's tools and either it's up
+3. check_health_sse.py - check the server's tools and either it's up (sse transport)
+4. check_health_stdio.py - check the server's tools and either it's up (stdio transport)
 
 ## Compatibility
-Tested only on Python3.11 running on MacOS
+Tested manually on Python3.11 running on MacOS against remote Ubuntu server  
+Autotested with Python 3.11 3.12 3.13 3.14  
 
 ## The MCP Registry
 mcp-name: io.github.Areso/safe-ssh-mcp

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "safe-ssh-mcp"
-version = "0.1.9"
+version = "0.1.10"
 description = "A secure and scoped SSH MCP server for executing safe read-only diagnostic commands over SSH"
 authors = [
   { name="Anton Areso Gladyshev", email="returnstrike@yandex.com" }
@@ -15,6 +15,7 @@ requires-python = ">=3.11,<4.0"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: POSIX :: Linux",
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
 ]
 dependencies = [
     "paramiko>=4.0.0,<5",

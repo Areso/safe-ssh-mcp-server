@@ -17,7 +17,9 @@ import re
 import shlex
 
 import paramiko
+#pip install mcp
 #from mcp.server.fastmcp import FastMCP
+#pip install fastmcp
 from fastmcp import FastMCP
 
 # Initialize MCP Server
@@ -316,6 +318,96 @@ def get_disk_usage(
 
     quoted_path = shlex.quote(abs_path)
     cmd = f"find {quoted_path} -mindepth 1 -maxdepth 1 -exec du -sh -- {{}} + 2>/dev/null | sort -rh | head -n 20"
+    result = run_ssh_command(
+        host, user, cmd, port, password, key_path, timeout, accept_new_hostkey, 
+        success_exit_codes=(0, 1) # du may return 1 on partial permission denied
+    )
+    if result["ok"]:
+        result["path"] = abs_path
+    return result
+
+@mcp.tool()
+def get_list_of_files(
+    host: str,
+    user: str,
+    abs_path: str = "/",
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects list of files for a specific abs path from a remote Linux host via SSH.
+    Returns with -lah option
+    """
+    FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
+
+    if not isinstance(abs_path, str):
+        print(f"Path must be string")
+        return {"ok": False, "error": "Path must be a string"}
+
+    if os.name != 'nt':  # Skip local path validation on Windows (wrong for remote Linux)
+        abs_path = os.path.normpath(abs_path)
+        if not os.path.isabs(abs_path):
+            print(f"Path must be absolute")
+            return {"ok": False, "error": "Path must be absolute"}
+
+    if re.search(FORBIDDEN_CHARS, abs_path):
+        print(f"Filter contains forbidden characters |&;<>()$`")
+        return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
+
+    quoted_path = shlex.quote(abs_path)
+    cmd = f"ls {quoted_path} -lah"
+    result = run_ssh_command(
+        host, user, cmd, port, password, key_path, timeout, accept_new_hostkey, 
+        success_exit_codes=(0, 1) # du may return 1 on partial permission denied
+    )
+    if result["ok"]:
+        result["path"] = abs_path
+    return result
+
+@mcp.tool()
+def get_list_of_files_with_filter(
+    host: str,
+    user: str,
+    abs_path: str = "/",
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    filter: str = "",
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Collects list of files for a specific abs path with filter (grep) applied from a remote Linux host via SSH.
+    -lah option is applied.
+    """
+    FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
+    
+    if not isinstance(abs_path, str):
+        print(f"Path must be string")
+        return {"ok": False, "error": "Path must be a string"}
+    if os.name != 'nt':  # Skip local path validation on Windows (wrong for remote Linux)
+        abs_path = os.path.normpath(abs_path)
+        if not os.path.isabs(abs_path):
+            print(f"Path must be absolute")
+            return {"ok": False, "error": "Path must be absolute"}
+
+    if re.search(FORBIDDEN_CHARS, abs_path):
+        print(f"Path contains forbidden characters |&;<>()$`")
+        return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
+    quoted_path = shlex.quote(abs_path)
+
+    if not isinstance(filter, str):
+        print(f"Filter must be string")
+        return {"ok": False, "error": "Filter must be a string"}
+    if re.search(FORBIDDEN_CHARS, filter):
+        print(f"Filter contains forbidden characters |&;<>()$`")
+        return {"ok": False, "error": "Filter contains forbidden characters |&;<>()$`{}"}
+    quoted_filter = shlex.quote(filter)
+
+    cmd = f"ls {quoted_path} -lah | grep {quoted_filter} "
     result = run_ssh_command(
         host, user, cmd, port, password, key_path, timeout, accept_new_hostkey, 
         success_exit_codes=(0, 1) # du may return 1 on partial permission denied
