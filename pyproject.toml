@@ -9,7 +9,10 @@ description = "A secure and scoped SSH MCP server for executing safe read-only d
 authors = [
   { name="Anton Areso Gladyshev", email="returnstrike@yandex.com" }
 ]
-license = "AGPL-3.0-or-later"
+# switch to that later to comply PEP639
+# license = "AGPL-3.0-or-later"
+# for now comply to PEP621 we use the following line and "License" in the classifiers list.
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.11,<4.0"
 classifiers = [
