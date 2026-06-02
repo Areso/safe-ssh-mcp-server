@@ -110,3 +110,82 @@ def test_journalctl_default_lines(mock_run_ssh_command):
     mcp_ssh.get_service_logs_from_journalctl(service="sshd", host="h", user="u")
     cmd = mock_run_ssh_command.call_args[0][2]
     assert "-n 200" in cmd
+
+
+# ==(========================================================
+# get_list_of_files — command building (happy path)
+# ==(========================================================
+
+def test_list_files_command_building(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/data")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert cmd.startswith("ls /data ")
+    assert "-lah" in cmd
+
+
+def test_list_files_root_path(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert cmd == "ls / -lah"
+
+
+def test_list_files_default_path(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files(host="h", user="u")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert cmd == "ls / -lah"
+
+
+def test_list_files_quoted_path(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var/my dir")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert "'/var/my dir'" in cmd
+
+
+def test_list_files_success_exit_codes(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var")
+    kwargs = mock_run_ssh_command.call_args[1]
+    assert kwargs.get("success_exit_codes") == (0, 1)
+
+
+# ==(========================================================
+# get_list_of_files_with_filter — command building (happy path)
+# ==(========================================================
+
+def test_list_files_filter_command_building(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/data", filter=".log")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert cmd.startswith("ls /data ")
+    assert "-lah" in cmd
+    assert "| grep" in cmd
+    assert ".log" in cmd
+
+
+def test_list_files_filter_root_path(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/", filter="etc")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert "ls /" in cmd
+    assert "| grep" in cmd
+
+
+def test_list_files_filter_default_path(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", filter="test")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert "ls /" in cmd
+
+
+def test_list_files_filter_quoted_path_and_filter(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var/my dir", filter="test file")
+    cmd = mock_run_ssh_command.call_args[0][2]
+    assert "'/var/my dir'" in cmd
+    assert "'test file'" in cmd
+
+
+def test_list_files_filter_success_exit_codes(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var", filter="log")
+    kwargs = mock_run_ssh_command.call_args[1]
+    assert kwargs.get("success_exit_codes") == (0, 1)
+
+
+def test_list_files_filter_empty_filter(mock_run_ssh_command):
+    mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/data", filter="")
+    mock_run_ssh_command.assert_called_once()

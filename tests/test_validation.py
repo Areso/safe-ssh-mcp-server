@@ -200,3 +200,161 @@ class TestJournalctlValidation:
         mcp_ssh.get_service_logs_from_journalctl(service="nginx", host="h", user="u", lines=1000)
         cmd = mock_run_ssh_command.call_args[0][2]
         assert "-n 1000 " in cmd
+
+
+# ============================================================
+# get_list_of_files — path validation
+# ============================================================
+
+class TestListFilesPathValidation:
+    """Validate abs_path parameter of get_list_of_files."""
+
+    def test_non_string_path_rejected(self, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files(host="h", user="u", abs_path=123)
+        assert result == {"ok": False, "error": "Path must be a string"}
+        mock_run_ssh_command.assert_not_called()
+
+    def test_relative_path_rejected(self, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files(host="h", user="u", abs_path="var/log")
+        assert result == {"ok": False, "error": "Path must be absolute"}
+        mock_run_ssh_command.assert_not_called()
+
+    @pytest.mark.parametrize("char", ["|", "&", ";", "<", ">", "(", ")", "$", "`", "{", "}"])
+    def test_forbidden_char_rejected(self, char, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files(host="h", user="u", abs_path=f"/tmp/{char}evil")
+        assert result["ok"] is False
+        assert "forbidden characters" in result["error"]
+        mock_run_ssh_command.assert_not_called()
+
+    def test_valid_absolute_path(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var/log")
+        mock_run_ssh_command.assert_called_once()
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "/var/log" in cmd
+
+    def test_root_path(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/")
+        mock_run_ssh_command.assert_called_once()
+
+    def test_path_normalization(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var/../var/log")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "/var/log" in cmd
+
+    def test_path_with_spaces(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var/my dir")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "'/var/my dir'" in cmd
+
+    def test_success_result_contains_path_key(self, mock_run_ssh_command):
+        mock_run_ssh_command.return_value = {
+            "ok": True, "host": "h", "collected_at_utc": "t",
+            "data": {"command": "x", "exit_code": 0, "stdout": "", "stderr": ""},
+        }
+        result = mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var")
+        assert result["path"] == "/var"
+
+    def test_failure_result_has_no_path_key(self, mock_run_ssh_command):
+        mock_run_ssh_command.return_value = {"ok": False, "error": "boom"}
+        result = mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var")
+        assert "path" not in result
+
+    def test_passes_success_exit_codes_0_1(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files(host="h", user="u", abs_path="/var")
+        kwargs = mock_run_ssh_command.call_args[1]
+        assert kwargs.get("success_exit_codes") == (0, 1)
+
+
+# ============================================================
+# get_list_of_files_with_filter — path + filter validation
+# ============================================================
+
+class TestListFilesWithFilterValidation:
+    """Validate abs_path and filter parameters of get_list_of_files_with_filter."""
+
+    # -- abs_path validation (mirrors get_list_of_files) --
+
+    def test_non_string_path_rejected(self, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path=123)
+        assert result == {"ok": False, "error": "Path must be a string"}
+        mock_run_ssh_command.assert_not_called()
+
+    def test_relative_path_rejected(self, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="var/log")
+        assert result == {"ok": False, "error": "Path must be absolute"}
+        mock_run_ssh_command.assert_not_called()
+
+    @pytest.mark.parametrize("char", ["|", "&", ";", "<", ">", "(", ")", "$", "`", "{", "}"])
+    def test_path_forbidden_char_rejected(self, char, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path=f"/tmp/{char}evil", filter="log")
+        assert result["ok"] is False
+        assert "forbidden characters" in result["error"]
+        mock_run_ssh_command.assert_not_called()
+
+    def test_valid_absolute_path(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var/log", filter=".log")
+        mock_run_ssh_command.assert_called_once()
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "/var/log" in cmd
+
+    def test_root_path(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/", filter="etc")
+        mock_run_ssh_command.assert_called_once()
+
+    def test_path_normalization(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var/../var/log", filter="*.log")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "/var/log" in cmd
+
+    def test_path_with_spaces(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var/my dir", filter="test")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "'/var/my dir'" in cmd
+
+    def test_success_result_contains_path_key(self, mock_run_ssh_command):
+        mock_run_ssh_command.return_value = {
+            "ok": True, "host": "h", "collected_at_utc": "t",
+            "data": {"command": "x", "exit_code": 0, "stdout": "", "stderr": ""},
+        }
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var", filter="log")
+        assert result["path"] == "/var"
+
+    def test_failure_result_has_no_path_key(self, mock_run_ssh_command):
+        mock_run_ssh_command.return_value = {"ok": False, "error": "boom"}
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var", filter="log")
+        assert "path" not in result
+
+    def test_passes_success_exit_codes_0_1(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var", filter="log")
+        kwargs = mock_run_ssh_command.call_args[1]
+        assert kwargs.get("success_exit_codes") == (0, 1)
+
+    # -- filter validation --
+
+    def test_non_string_filter_rejected(self, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/", filter=123)
+        assert result == {"ok": False, "error": "Filter must be a string"}
+        mock_run_ssh_command.assert_not_called()
+
+    @pytest.mark.parametrize("char", ["|", "&", ";", "<", ">", "(", ")", "$", "`", "{", "}"])
+    def test_filter_forbidden_char_rejected(self, char, mock_run_ssh_command):
+        result = mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/", filter=f"log{char}evil")
+        assert result["ok"] is False
+        assert "forbidden characters" in result["error"]
+        mock_run_ssh_command.assert_not_called()
+
+    def test_empty_filter_accepted(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/", filter="")
+        mock_run_ssh_command.assert_called_once()
+
+    def test_filter_is_quoted_in_command(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/var/log", filter="test file")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert "'test file'" in cmd
+
+    def test_command_contains_ls_and_grep(self, mock_run_ssh_command):
+        mcp_ssh.get_list_of_files_with_filter(host="h", user="u", abs_path="/data", filter="\\.txt")
+        cmd = mock_run_ssh_command.call_args[0][2]
+        assert cmd.startswith("ls ")
+        assert "-lah" in cmd
+        assert "| grep" in cmd
