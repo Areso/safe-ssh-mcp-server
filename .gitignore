@@ -7,3 +7,6 @@ coverage.xml
 .coverage
 htmlcov/
 dist/
+ssh.json
+.pytest_cache/
+json.log.json

@@ -15,12 +15,14 @@ import argparse
 import sys
 import re
 import shlex
+import logging
 
 import paramiko
 #pip install mcp
 #from mcp.server.fastmcp import FastMCP
 #pip install fastmcp
 from fastmcp import FastMCP
+from py_logger import setup_logger
 
 # Initialize MCP Server
 mcp = FastMCP("SRE Collector")
@@ -344,17 +346,17 @@ def get_list_of_files(
     FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
 
     if not isinstance(abs_path, str):
-        print(f"Path must be string")
+        logger.error(f"get_list_of_files tool: Path must be string")
         return {"ok": False, "error": "Path must be a string"}
 
     if os.name != 'nt':  # Skip local path validation on Windows (wrong for remote Linux)
         abs_path = os.path.normpath(abs_path)
         if not os.path.isabs(abs_path):
-            print(f"Path must be absolute")
+            logger.error(f"get_list_of_files tool: Path must be absolute")
             return {"ok": False, "error": "Path must be absolute"}
 
     if re.search(FORBIDDEN_CHARS, abs_path):
-        print(f"Filter contains forbidden characters |&;<>()$`")
+        logger.error(f"get_list_of_files tool: Filter contains forbidden characters |&;<>()$`")
         return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
 
     quoted_path = shlex.quote(abs_path)
@@ -386,24 +388,24 @@ def get_list_of_files_with_filter(
     FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
     
     if not isinstance(abs_path, str):
-        print(f"Path must be string")
+        logger.error(f"get_list_of_files_with_filter tool: Path must be string")
         return {"ok": False, "error": "Path must be a string"}
     if os.name != 'nt':  # Skip local path validation on Windows (wrong for remote Linux)
         abs_path = os.path.normpath(abs_path)
         if not os.path.isabs(abs_path):
-            print(f"Path must be absolute")
+            logger.error(f"get_list_of_files_with_filter tool: Path must be absolute")
             return {"ok": False, "error": "Path must be absolute"}
 
     if re.search(FORBIDDEN_CHARS, abs_path):
-        print(f"Path contains forbidden characters |&;<>()$`")
+        logger.error(f"get_list_of_files_with_filter tool:Path contains forbidden characters |&;<>()$`")
         return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
     quoted_path = shlex.quote(abs_path)
 
     if not isinstance(filter, str):
-        print(f"Filter must be string")
+        logger.error(f"get_list_of_files_with_filter tool: Filter must be string")
         return {"ok": False, "error": "Filter must be a string"}
     if re.search(FORBIDDEN_CHARS, filter):
-        print(f"Filter contains forbidden characters |&;<>()$`")
+        logger.error(f"get_list_of_files_with_filter tool: Filter contains forbidden characters |&;<>()$`")
         return {"ok": False, "error": "Filter contains forbidden characters |&;<>()$`{}"}
     quoted_filter = shlex.quote(filter)
 
@@ -415,6 +417,36 @@ def get_list_of_files_with_filter(
     if result["ok"]:
         result["path"] = abs_path
     return result
+
+@mcp.tool()
+def get_is_installed(
+    host: str,
+    user: str,
+    port: int = 22,
+    password: Optional[str] = None,
+    key_path: Optional[str] = None,
+    binary: str = "ls",
+    timeout: int = 20,
+    accept_new_hostkey: bool = False,
+) -> Dict[str, Any]:
+    """
+    Checks whether a binary/command is installed and callable on a remote Linux host via SSH.
+    """
+    FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
+    
+    if not isinstance(binary, str):
+        logger.error(f"get_list_of_files_with_filter tool: Path must be string")
+        return {"ok": False, "error": "Path must be a string"}
+    if re.search(FORBIDDEN_CHARS, binary):
+        logger.error(f"get_list_of_files_with_filter tool:Path contains forbidden characters |&;<>()$`")
+        return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
+    quoted_binary = shlex.quote(binary)
+
+    cmd = f"if command -v {quoted_binary} >/dev/null 2>&1; then echo 'installed'; else echo 'not installed'; fi"
+    logger.info(cmd)
+    return run_ssh_command(
+        host, user, cmd, port, password, key_path, timeout, accept_new_hostkey
+    )
 
 @mcp.tool()
 def get_dmesg(
@@ -734,10 +766,10 @@ def main():
     parser.add_argument("--host", help="Override host binding")
     parser.add_argument("--port", type=int, help="Override port")
     args = parser.parse_args()
-
+    logger.debug("Parsed start arguments")
     # 2. Load config file
     cfg = load_config()
-
+    logger.debug("Loaded config")
     # 3. CLI arguments take priority over config file
     transport_type = args.transport or cfg.get("transport", "stdio")
     host = args.host or cfg.get("host", "127.0.0.1")
@@ -753,4 +785,8 @@ def main():
         mcp.run(transport="stdio")
 
 if __name__ == "__main__":
+    # 0. Init the logger
+    logger = setup_logger()
+    logger.handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+    logger.debug("Init logger")
     main()
