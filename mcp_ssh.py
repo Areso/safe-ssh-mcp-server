@@ -23,6 +23,10 @@ import paramiko
 #pip install fastmcp
 from fastmcp import FastMCP
 from py_logger import setup_logger
+# 0. Init the logger
+logger = setup_logger()
+logger.handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
+logger.debug("Init logger")
 
 # Initialize MCP Server
 mcp = FastMCP("SRE Collector")
@@ -785,8 +789,4 @@ def main():
         mcp.run(transport="stdio")
 
 if __name__ == "__main__":
-    # 0. Init the logger
-    logger = setup_logger()
-    logger.handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
-    logger.debug("Init logger")
     main()

@@ -23,6 +23,7 @@ classifiers = [
 dependencies = [
     "paramiko>=5.0.0,<6",
     "fastmcp>=3.2.0,<4",
+    "json-dev-logger>=0.0.15",
 ]
 
 [project.optional-dependencies]
