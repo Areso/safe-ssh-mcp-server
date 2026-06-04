@@ -68,6 +68,7 @@ def setup_logger(
     richer git-aware `json-dev-logger` instead."""
     dev_logger = _setup_dev_logger()
     if dev_logger is not None:
+        dev_logger.propagate = False
         return dev_logger
 
     path = os.environ.get("SAFE_SSH_MCP_LOG_FILE", path)
@@ -81,6 +82,7 @@ def setup_logger(
         file_handler.setFormatter(JSONFormatter())
         logger_c.addHandler(file_handler)
         logger_c.setLevel(level)
+    logger_c.propagate = False
     return logger_c
 
 
