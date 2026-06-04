@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import socket
 import configparser
+import json
 import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, ContextManager
@@ -22,10 +23,69 @@ import paramiko
 #from mcp.server.fastmcp import FastMCP
 #pip install fastmcp
 from fastmcp import FastMCP
-from py_logger import setup_logger
+
+
+class JSONFormatter(logging.Formatter):
+    """Minimal JSON log formatter (no external dependencies)."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        log_record = {
+            "level": record.levelname,
+            "time": self.formatTime(record),
+            "message": record.getMessage(),
+            "name": record.name,
+            "filename": record.filename,
+            "lineno": record.lineno,
+        }
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
+
+def _setup_dev_logger() -> Optional[logging.Logger]:
+    """Use the richer `json-dev-logger` (a dev-only extra) if it is both
+    explicitly enabled via SAFE_SSH_MCP_DEV_LOGGER=1 and actually installed.
+    Returns None so the caller can fall back to the built-in logger."""
+    if os.environ.get("SAFE_SSH_MCP_DEV_LOGGER") != "1":
+        return None
+    try:
+        from py_logger import setup_logger as _dev_setup_logger  # type: ignore
+    except ImportError:
+        return None
+    dev_logger = _dev_setup_logger()
+    # Keep only file handlers: json-dev-logger also attaches a StreamHandler,
+    # which would corrupt the JSON-RPC stream when running over stdio.
+    dev_logger.handlers = [h for h in dev_logger.handlers if isinstance(h, logging.FileHandler)]
+    return dev_logger
+
+def setup_logger(
+    path: str = "safe-ssh-mcp.log",
+    level: int = logging.DEBUG,
+) -> logging.Logger:
+    """Configure a JSON file logger. Path/level are configurable via env vars.
+
+    By default this uses a dependency-free stdlib logger. Set
+    SAFE_SSH_MCP_DEV_LOGGER=1 (with the `dev` extra installed) to opt into the
+    richer git-aware `json-dev-logger` instead."""
+    dev_logger = _setup_dev_logger()
+    if dev_logger is not None:
+        return dev_logger
+
+    path = os.environ.get("SAFE_SSH_MCP_LOG_FILE", path)
+    env_level = os.environ.get("SAFE_SSH_MCP_LOG_LEVEL")
+    if env_level:
+        level = getattr(logging, env_level.upper(), level)
+
+    logger_c = logging.getLogger("safe-ssh-mcp")
+    if not logger_c.handlers:
+        file_handler = logging.FileHandler(path, mode="a")
+        file_handler.setFormatter(JSONFormatter())
+        logger_c.addHandler(file_handler)
+        logger_c.setLevel(level)
+    return logger_c
+
+
 # 0. Init the logger
 logger = setup_logger()
-logger.handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
 logger.debug("Init logger")
 
 # Initialize MCP Server

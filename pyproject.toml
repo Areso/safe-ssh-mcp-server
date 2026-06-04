@@ -22,8 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "paramiko>=5.0.0,<6",
-    "fastmcp>=3.2.0,<4",
-    "json-dev-logger>=0.0.15",
+    "fastmcp>=3.2.0,<4"
 ]
 
 [project.optional-dependencies]
@@ -31,6 +30,8 @@ dev = [
     "pytest>=8.0,<9",
     "pytest-mock>=3.14,<4",
     "pytest-cov>=6.0,<7",
+    # I like it more when debugging
+    "json-dev-logger>=0.0.15",
 ]
 [project.urls]
 "Homepage" = "https://github.com/Areso/safe-ssh-mcp"
