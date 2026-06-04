@@ -1,0 +1,162 @@
+# Changelog
+
+All notable changes to **safe-ssh-mcp** are documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> **Pre-1.0 note:** While the version is `0.x`, the tool surface (tool names and
+> parameters) is still considered unstable and may change between minor releases.
+
+
+
+
+
+## [0.1.13] - 2026-06-03
+
+### Added
+- New tool `get_is_installed` — checks whether a given binary/command is
+  installed and callable on the remote host (`command -v <binary>`), with the
+  same forbidden-character validation as the other parameterized tools.
+- Structured file logging via the `json-dev-logger` package (`py_logger.setup_logger`);
+  validation failures and executed commands are now logged instead of printed.
+- Debug log lines in `main()` for argument parsing and config loading.
+
+### Changed
+- Replaced ad-hoc `print(...)` diagnostics in the file-listing tools with
+  `logger.error(...)` calls.
+- **Dependency bumps:**
+  - `paramiko` `>=4.0.0,<5` → `>=5.0.0,<6` (major version bump).
+  - `fastmcp` `>=3.1.1,<4` → `>=3.2.0,<4`.
+  - Added `json-dev-logger>=0.0.15`.
+
+### Known issues
+- **Possible behavioral degradation introduced by the dependency bumps**
+  (`paramiko` 4.x → 5.x major upgrade, `fastmcp` 3.1.1 → 3.2.x upgrade). This is flagged in the
+  release commit message (`"bumped dependencies (possible degradation)"`)  
+  Users who need the
+  previously verified behavior can pin to `0.1.11`.
+  _TODO: confirm the exact symptom/root cause and link a tracking issue._
+- Several copied validation log messages in `get_is_installed` and the
+  file-listing tools reference the wrong tool name
+  (e.g. `"get_list_of_files_with_filter tool: ..."`), which can be misleading
+  when reading logs.
+
+## [0.1.12] - 2026-06-02
+
+### Added
+- Expanded automated test coverage (`tests/test_tools.py`,
+  `tests/test_validation.py`) for the file-listing tools and additional
+  validation paths.
+
+### Notes
+- Version `0.1.11` was skipped; there is no `v0.1.11` release.
+
+## [0.1.10] - 2026-06-02
+
+### Added
+- New tool `get_list_of_files` — directory listing via `ls -lah` for an
+  absolute path, with path validation and forbidden-character filtering.
+- New tool `get_list_of_files_with_filter` — same listing piped through
+  `grep <filter>`, with validation on both the path and the filter.
+- Health-check helper scripts `check_health_sse.py` and `check_health_stdio.py`
+  to verify the server is up and enumerate its tools over each transport.
+
+## [0.1.9] - 2026-05-18
+
+### Added
+- Test suite and CI pipeline (merged via PR #1): pytest fixtures/`conftest.py`,
+  input-validation tests, parametrized tests for all tool handlers,
+  `run_ssh_command` orchestration tests, SSH-pool/janitor tests, and
+  `load_config` tests.
+- GitHub Actions CI running pytest with coverage on Python 3.11 / 3.12 / 3.13.
+- `dev` optional dependencies and pytest/coverage configuration in
+  `pyproject.toml`.
+
+### Changed
+- SSH connection-pool handling improved; the pool is now keyed by the full
+  connection details provided (close #5).
+- Per-command timeouts for SSH execution (close #3).
+- Fixed an improper f-string template bug in command construction (close #2).
+- Build/packaging tweaks for Poetry compatibility (bounded Python to `<4.0`,
+  added `[tool.poetry]` packages config).
+
+### Removed
+- `requirements.txt` (dependencies are managed via `pyproject.toml`).
+- `poetry.lock` excluded from version control (library consumers resolve from
+  the declared ranges).
+
+## [0.1.8] - 2026-03-22
+
+### Added
+- New tool `get_docker_ps_all` — `docker ps --all`.
+
+## [0.1.7] - 2026-03-22
+
+### Added
+- New tools: `get_inode_usage` (`df -i`), `get_ps_aux_top_cpu_consumers`,
+  `get_ps_aux_top_mem_consumers`, `get_free_memory`, `get_memory_pressure`,
+  and `get_service_logs_from_journalctl` (journald logs for a specific
+  systemd service, with service-name validation and a bounded line count).
+
+## [0.1.6] - 2026-03-22
+
+### Added
+- New tools: `get_lsblk`, `get_crontab_tasks`, and `get_listening_sockets`
+  (`ss -tulpn`).
+
+### Changed
+- Pinned dependency version ranges: `paramiko>=4.0.0,<5`, `fastmcp>=3.1.1,<4`.
+
+## [0.1.5] - 2026-03-19
+
+### Security
+- Sanitized the `systemctl status` call: the daemon name is now validated
+  against an allowlist pattern and shell-quoted before use.
+
+### Added
+- `get_disk_usage` now properly handles and validates the target path
+  (absolute-path checks, normalization, forbidden-character filtering).
+- README updated with an example invocation.
+
+## [0.1.4] - 2026-03-19
+
+### Added
+- Listed on the MCP Registry (`io.github.Areso/safe-ssh-mcp`).
+
+## [0.1.3] - 2026-03-19
+
+### Fixed
+- Defaulted transport to `stdio` in an additional code path that was missed
+  in `0.1.2`.
+
+## [0.1.2] - 2026-03-19
+
+### Fixed
+- Config loading when the server is launched by Cline.
+
+### Changed
+- Default transport switched to `stdio` for shipping.
+
+## [0.1.1] - 2026-03-17
+
+### Added
+- `cline_mcp_settings.json` example configuration.
+- Ability to run with either `stdio` or `sse` transport based on CLI arguments.
+
+### Changed
+- Improved error handling in `run_ssh_command`.
+
+### Removed
+- `uvicorn` dependency.
+
+## [0.1.0] - 2026-03-16
+
+### Added
+- Initial public release: FastMCP-based SSH server exposing read-only
+  diagnostic tools (disk, systemd, uptime, OS info, `top`, etc.) over `stdio`
+  and `sse` transports.
+- Connection pooling with an idle-connection janitor thread and graceful
+  shutdown on SIGTERM/SIGINT.
+- Building and publishing setup (`pyproject.toml`, PyPI publish workflow).
+- Licensed under GNU AGPLv3.
