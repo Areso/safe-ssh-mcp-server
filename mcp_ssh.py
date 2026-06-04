@@ -137,13 +137,13 @@ def _cleanup_idle_connections():
             # Remove closed connections from the pool
             for key in keys_to_delete:
                 del SSH_POOL[key]
-                print(f"[SSH Pool Janitor] Closed idle connection: {key}")
+                logger.info(f"[SSH Pool Janitor] Closed idle connection: {key}")
 
 janitor_thread = threading.Thread(target=_cleanup_idle_connections, daemon=True)
 janitor_thread.start()
 
 def shutdown_gracefully(signum, frame):
-    print("\n[Shutdown] Received shutdown signal, cleaning up...")
+    logger.info("\n[Shutdown] Received shutdown signal, cleaning up...")
     shutdown_event.set()
     janitor_thread.join(timeout=5)
     for pool_key, data in SSH_POOL.items():

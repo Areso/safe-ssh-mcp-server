@@ -10,3 +10,5 @@ dist/
 ssh.json
 .pytest_cache/
 json.log.json
+safe-ssh-mcp.log
+
