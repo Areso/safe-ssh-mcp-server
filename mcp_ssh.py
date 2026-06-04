@@ -439,11 +439,11 @@ def get_is_installed(
     FORBIDDEN_CHARS = r'[|&;<>()$`{}]'
     
     if not isinstance(binary, str):
-        logger.error(f"get_list_of_files_with_filter tool: Path must be string")
-        return {"ok": False, "error": "Path must be a string"}
+        logger.error(f"get_is_installed tool: Binary name must be string")
+        return {"ok": False, "error": "Binary name must be a string"}
     if re.search(FORBIDDEN_CHARS, binary):
-        logger.error(f"get_list_of_files_with_filter tool:Path contains forbidden characters |&;<>()$`")
-        return {"ok": False, "error": "Path contains forbidden characters |&;<>()$`{}"}
+        logger.error(f"get_is_installed tool: Binary name contains forbidden characters |&;<>()$`")
+        return {"ok": False, "error": "Binary name contains forbidden characters |&;<>()$`{}"}
     quoted_binary = shlex.quote(binary)
 
     cmd = f"if command -v {quoted_binary} >/dev/null 2>&1; then echo 'installed'; else echo 'not installed'; fi"
