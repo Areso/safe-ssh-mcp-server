@@ -110,6 +110,61 @@ def load_config():
     return settings
 
 # ---- SSH helpers ----
+SSH_KEY_PASSPHRASE_METHOD_ENV_VAR = "ENV_VAR"
+SSH_KEY_PASSPHRASE_METHOD_KEYCHAIN = "KEYCHAIN"
+SSH_KEY_PASSPHRASE_METHODS = {
+    SSH_KEY_PASSPHRASE_METHOD_ENV_VAR,
+    SSH_KEY_PASSPHRASE_METHOD_KEYCHAIN,
+}
+ssh_key_passphrase_method = SSH_KEY_PASSPHRASE_METHOD_ENV_VAR
+
+
+def get_ssh_auth_options(key_path: Optional[str]) -> Dict[str, Any]:
+    """Build Paramiko authentication options from the configured key source."""
+    if ssh_key_passphrase_method == SSH_KEY_PASSPHRASE_METHOD_ENV_VAR:
+        return {
+            "key_filename": key_path,
+            "passphrase": os.environ.get("SSH_KEY_PASSPHRASE"),
+            "allow_agent": False,
+            "look_for_keys": True,
+        }
+
+    if ssh_key_passphrase_method == SSH_KEY_PASSPHRASE_METHOD_KEYCHAIN:
+        # The key is already unlocked in ssh-agent; do not read key_path directly.
+        return {
+            "key_filename": None,
+            "passphrase": None,
+            "allow_agent": True,
+            "look_for_keys": False,
+        }
+
+    raise ValueError(
+        f"Unsupported ssh_key_passphrase_method: {ssh_key_passphrase_method}"
+    )
+
+
+def connect_ssh_client(
+    client: paramiko.SSHClient,
+    host: str,
+    user: str,
+    port: int,
+    password: Optional[str],
+    key_path: Optional[str],
+    timeout: int,
+) -> None:
+    """Connect using the configured SSH key passphrase source."""
+    client.connect(
+        hostname=host,
+        port=port,
+        username=user,
+        password=password,
+        timeout=timeout,
+        banner_timeout=timeout,
+        auth_timeout=timeout,
+        **get_ssh_auth_options(key_path),
+    )
+
+
 SSH_POOL: Dict[str, Dict[str, Any]] = {}
 pool_lock = threading.Lock()
 IDLE_TIMEOUT_SECONDS = 300
@@ -177,18 +232,7 @@ def ssh_session(
     )
 
     try:
-        client.connect(
-            hostname=host,
-            port=port,
-            username=user,
-            password=password,
-            key_filename=key_path,
-            timeout=timeout,
-            banner_timeout=timeout,
-            auth_timeout=timeout,
-            look_for_keys=True,
-            allow_agent=True,
-        )
+        connect_ssh_client(client, host, user, port, password, key_path, timeout)
         yield client
     finally:
         client.close()
@@ -238,18 +282,7 @@ def get_ssh_client(
             paramiko.AutoAddPolicy() if accept_new_hostkey else paramiko.RejectPolicy()
         )
 
-        client.connect(
-            hostname=host,
-            port=port,
-            username=user,
-            password=password,
-            key_filename=key_path,
-            timeout=timeout,
-            banner_timeout=timeout,
-            auth_timeout=timeout,
-            look_for_keys=True,
-            allow_agent=True,
-        )
+        connect_ssh_client(client, host, user, port, password, key_path, timeout)
         
         # 3. Save to pool WITH the current timestamp
         SSH_POOL[pool_key] = {
@@ -320,6 +353,15 @@ def run_ssh_command(
     # 3. Catch specific network/protocol errors for better AI debugging
     except socket.error as e:
         return {"ok": False, "error": f"Network error: Could not connect to {host}:{port}. ({str(e)})"}
+    except paramiko.PasswordRequiredException:
+        return {
+            "ok": False,
+            "error": (
+                "The SSH key is passphrase-protected. Set SSH_KEY_PASSPHRASE "
+                "or set ssh_key_passphrase_method=KEYCHAIN and unlock the key "
+                "with ssh-add."
+            ),
+        }
     except paramiko.SSHException as e:
         return {"ok": False, "error": f"SSH protocol error: {str(e)}"}
     except Exception as e:
@@ -825,6 +867,8 @@ def get_service_logs_from_journalctl(
 
 
 def main():
+    global ssh_key_passphrase_method
+
     # 1. Set up command line arguments
     parser = argparse.ArgumentParser(description="Safe SSH MCP Server")
     parser.add_argument("--transport", choices=["stdio", "sse", "streamable-http"], 
@@ -836,6 +880,14 @@ def main():
     # 2. Load config file
     cfg = load_config()
     logger.debug("Loaded config")
+    ssh_key_passphrase_method = cfg.get(
+        "ssh_key_passphrase_method", SSH_KEY_PASSPHRASE_METHOD_ENV_VAR
+    ).strip().upper()
+    if ssh_key_passphrase_method not in SSH_KEY_PASSPHRASE_METHODS:
+        parser.error(
+            "Invalid ssh_key_passphrase_method. "
+            f"Choose one of: {', '.join(sorted(SSH_KEY_PASSPHRASE_METHODS))}."
+        )
     # 3. CLI arguments take priority over config file
     transport_type = args.transport or cfg.get("transport", "stdio")
     host = args.host or cfg.get("host", "127.0.0.1")
