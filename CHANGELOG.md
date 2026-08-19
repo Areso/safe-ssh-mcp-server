@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > **Pre-1.0 note:** While the version is `0.x`, the tool surface (tool names and
 > parameters) is still considered unstable and may change between minor releases.
 
+## [0.1.15] - 2026-08-19
+- added support for SSH keys protected by passphrase
+- to use protected keys either set SSH_KEY_PASSPHRASE var in the env
+- or change method in mcp_config.ini to KEYCHAIN and unlock the key with KEYCHAIN
 
 
 ## [0.1.14] - 2026-06-04

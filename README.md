@@ -29,6 +29,75 @@ Click to open [full list of available tools](tools.md)
 ## Example of invocation
 `okay, could u check disk usage on /root/ path with help of safe-ssh-mcp server on a remote myserver.mydomain.pro using root and /Users/myUser/.ssh/id_rsa to login?`
 
+## Means of connection
+The server supports SSH account-password authentication and private-key
+authentication. Configure the private-key passphrase source in
+`mcp_config.ini`:
+
+```ini
+# ENV_VAR (SSH_KEY_PASSPHRASE) or KEYCHAIN (ssh-agent)
+ssh_key_passphrase_method=ENV_VAR
+```
+
+1. SSH account password: provide `password` to the MCP tool. Do not use this
+   for a private-key passphrase.
+2. Unprotected SSH key: use `key_path`. The default `ENV_VAR` setting also
+   supports unprotected keys; `SSH_KEY_PASSPHRASE` is not required.
+3. Passphrase-protected SSH key from an environment variable: leave
+   `ssh_key_passphrase_method=ENV_VAR`, set `SSH_KEY_PASSPHRASE` in the
+   environment that starts the MCP server, and provide `key_path`.
+
+   ```bash
+   export SSH_KEY_PASSPHRASE='your-key-passphrase'
+   safe-ssh-mcp
+   ```
+
+4. macOS Keychain / SSH agent: set
+   `ssh_key_passphrase_method=KEYCHAIN`, then unlock the key in the same user
+   session that starts the MCP server. The server receives SSH signatures from
+   `ssh-agent`; it does not read the key passphrase or the `key_path`.
+
+   ```bash
+   ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+
+   # Optional: make the loaded identity expire after one hour.
+   ssh-add -t 1h ~/.ssh/id_ed25519
+
+   # Remove one identity, or clear every loaded identity.
+   ssh-add -d ~/.ssh/id_ed25519
+   ssh-add -D
+   ```
+
+5. Cursor launched from the macOS Dock: use `KEYCHAIN` (recommended). You can
+   run `ssh-add` from any Terminal window; it updates the SSH agent for your
+   macOS login session, so Cursor does not need to be started from that
+   Terminal.
+
+   ```bash
+   ssh-add --apple-use-keychain ~/.ssh/id_ed25519
+   ssh-add -l
+   ```
+
+   After changing `mcp_config.ini`, restart the MCP server in Cursor (or fully
+   quit and reopen Cursor). When invoking a tool in `KEYCHAIN` mode, omit
+   `key_path`; the agent selects from its loaded identities.
+
+   If you must use `ENV_VAR`, set it in the macOS launchd session before
+   opening Cursor from the Dock, then fully quit and reopen Cursor:
+
+   ```bash
+   launchctl setenv SSH_KEY_PASSPHRASE 'your-key-passphrase'
+   ```
+
+   This value lasts only for the current login session, and putting a
+   passphrase directly in a command may save it in shell history. Prefer
+   `KEYCHAIN`.
+
+For `KEYCHAIN`, the MCP server must inherit `SSH_AUTH_SOCK` from that user
+session. This is normally automatic for a stdio server started from a desktop
+application. `ENV_VAR` stores the passphrase in the server process environment,
+so restrict access to the process and avoid putting it in source control.
+
 ## [Changelog](CHANGELOG.md)
 
 ## Project Contents
